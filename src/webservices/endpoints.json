@@ -1,0 +1,9 @@
+{
+    "evaluations": "/user/evaluations",
+    "evaluation": "/user/evaluations/:id",
+    "processes": "/user/processes?include_logs=true",
+    "process": "/user/processes/:id?include_logs=true",
+    "uploadRecording": "/user/evaluations/upload",
+    "testing": "/user/testing/:type",
+    "retryProcess": "/user/processes/:id/retry"
+}
