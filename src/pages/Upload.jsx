@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     ArrowLeft,
@@ -7,6 +7,7 @@ import {
     CloudUpload,
     FileVideo,
     Info,
+    TriangleAlert,
     ShieldCheck,
     X
 } from "lucide-react";
@@ -23,6 +24,7 @@ export default function Upload()
     const [subject, setSubject] = useState("");
     const [notes, setNotes] = useState("");
     const [busy, setBusy] = useState(false);
+    const [progress, setProgress] = useState(0);
     const [error, setError] = useState("");
     const [result, setResult] = useState(null);
     const inputRef = useRef(null);
@@ -58,6 +60,29 @@ export default function Upload()
         }
     }
 
+    useEffect(function ()
+    {
+        function warnBeforeLeaving(event)
+        {
+            event.preventDefault();
+            event.returnValue = "";
+        }
+
+        if (busy)
+        {
+            window.addEventListener("beforeunload", warnBeforeLeaving);
+        }
+        else
+        {
+            // No upload is running, so leaving the page is safe.
+        }
+
+        return function ()
+        {
+            window.removeEventListener("beforeunload", warnBeforeLeaving);
+        };
+    }, [busy]);
+
     function submit(event)
     {
         event.preventDefault();
@@ -69,9 +94,10 @@ export default function Upload()
         else
         {
             setBusy(true);
+            setProgress(0);
             setError("");
 
-            uploadRecording(file, { title: title, teacher: teacher, subject: subject, notes: notes })
+            uploadRecording(file, { title: title, teacher: teacher, subject: subject, notes: notes }, setProgress)
                 .then(function (data)
                 {
                     setResult(data);
@@ -228,6 +254,14 @@ export default function Upload()
                         </div>
                     </div>
 
+                    {busy && (
+                        <div className="warning-alert" role="alert">
+                            <TriangleAlert size={16} />
+                            <span>
+                                <strong>Upload in progress{progress > 0 ? ` (${progress}%)` : ""}.</strong> Please don't refresh, close this tab or go to another page until it finishes.
+                            </span>
+                        </div>
+                    )}
                     {error && <div className="inline-alert"><Info size={16} />{error}</div>}
                     {result && (
                         <div className="success-alert">
@@ -248,7 +282,7 @@ export default function Upload()
                             <span>Your recording is processed privately within your workspace.</span>
                         </div>
                         <button className="btn btn-primary" type="submit" disabled={busy || !!result}>
-                            {busy ? "Submitting…" : result ? "Submitted" : "Upload & analyze"}
+                            {busy ? (progress > 0 && progress < 100 ? `Uploading ${progress}%` : "Submitting…") : result ? "Submitted" : "Upload & analyze"}
                             {!busy && !result && <ArrowRight size={16} />}
                         </button>
                     </div>

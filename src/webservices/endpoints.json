@@ -4,6 +4,8 @@
     "processes": "/user/processes?include_logs=true",
     "process": "/user/processes/:id?include_logs=true",
     "uploadRecording": "/user/evaluations/upload",
+    "uploadUrl": "/user/evaluations/upload-url",
+    "uploadComplete": "/user/evaluations/upload-complete",
     "testing": "/user/testing/:type",
     "retryProcess": "/user/processes/:id/retry"
 }

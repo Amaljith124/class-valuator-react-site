@@ -126,7 +126,72 @@ export function connectProcessSocket()
     });
 }
 
-export function uploadRecording(file, metadata)
+function putToStorage(uploadUrl, file, onProgress)
+{
+    return new Promise(function (resolve, reject)
+    {
+        const request = new XMLHttpRequest();
+        let started = false;
+
+        request.open("PUT", uploadUrl);
+        request.upload.onprogress = function (event)
+        {
+            if (event.lengthComputable)
+            {
+                started = true;
+                if (onProgress)
+                {
+                    onProgress(Math.round((event.loaded / event.total) * 100));
+                }
+                else
+                {
+                    // The caller does not display progress.
+                }
+            }
+            else
+            {
+                // Progress cannot be calculated for this event.
+            }
+        };
+        request.onload = function ()
+        {
+            if (request.status >= 200 && request.status < 300)
+            {
+                resolve();
+            }
+            else
+            {
+                reject(new Error(`Storage rejected the upload (${request.status}).`));
+            }
+        };
+        request.onerror = function ()
+        {
+            const error = new Error("Could not reach storage for the upload.");
+
+            // Nothing was sent: usually the bucket's CORS rule does not allow this site.
+            error.beforeUpload = !started;
+            reject(error);
+        };
+        request.send(file);
+    });
+}
+
+function uploadThroughServer(file, metadata)
+{
+    const body = new FormData();
+    body.append("file", file);
+    Object.entries(metadata).forEach(function ([key, value])
+    {
+        body.append(key, value);
+    });
+
+    return makeRequest(`${BASE_URL}${endpoints.uploadRecording}`, {
+        method: "POST",
+        body: body
+    });
+}
+
+export function uploadRecording(file, metadata, onProgress)
 {
     if (DEMO_MODE)
     {
@@ -141,16 +206,61 @@ export function uploadRecording(file, metadata)
     }
     else
     {
-        const body = new FormData();
-        body.append("file", file);
-        Object.entries(metadata).forEach(function ([key, value])
+        return new Promise(function (resolve, reject)
         {
-            body.append(key, value);
-        });
+            const mimeType = file.type || "video/mp4";
 
-        return makeRequest(`${BASE_URL}${endpoints.uploadRecording}`, {
-            method: "POST",
-            body: body
+            makeRequest(`${BASE_URL}${endpoints.uploadUrl}`, {
+                method: "POST",
+                body: JSON.stringify({ file_name: file.name, mime_type: mimeType, file_size: file.size })
+            })
+                .then(function (upload)
+                {
+                    putToStorage(upload.upload_url, file, onProgress)
+                        .then(function ()
+                        {
+                            makeRequest(`${BASE_URL}${endpoints.uploadComplete}`, {
+                                method: "POST",
+                                body: JSON.stringify({
+                                    ...metadata,
+                                    object_key: upload.object_key,
+                                    file_name: file.name,
+                                    mime_type: mimeType,
+                                    file_size: file.size
+                                })
+                            })
+                                .then(resolve)
+                                .catch(function (error)
+                                {
+                                    console.error("[webservices.uploadRecording] finish upload failed", error);
+                                    reject(error);
+                                });
+                        })
+                        .catch(function (error)
+                        {
+                            if (error.beforeUpload)
+                            {
+                                console.warn("[webservices.uploadRecording] direct upload blocked, using server upload", error);
+                                uploadThroughServer(file, metadata)
+                                    .then(resolve)
+                                    .catch(function (serverError)
+                                    {
+                                        console.error("[webservices.uploadRecording] server upload failed", serverError);
+                                        reject(serverError);
+                                    });
+                            }
+                            else
+                            {
+                                console.error("[webservices.uploadRecording] storage upload failed", error);
+                                reject(error);
+                            }
+                        });
+                })
+                .catch(function (error)
+                {
+                    console.error("[webservices.uploadRecording] request upload URL failed", error);
+                    reject(error);
+                });
         });
     }
 }
