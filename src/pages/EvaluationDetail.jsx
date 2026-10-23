@@ -33,6 +33,28 @@ function DimensionRow({ icon: Icon, color, title, score, barColor })
     );
 }
 
+function evidenceText(evidence)
+{
+    const items = Array.isArray(evidence) ? evidence : [evidence];
+    const quotes = items.map(function (entry)
+    {
+        if (typeof entry === "string")
+        {
+            return entry;
+        }
+        else if (entry && typeof entry.quote === "string")
+        {
+            return entry.quote;
+        }
+        else
+        {
+            return "";
+        }
+    }).filter(Boolean);
+
+    return quotes.join(" … ");
+}
+
 export default function EvaluationDetail()
 {
     const { id } = useParams();
@@ -203,15 +225,15 @@ export default function EvaluationDetail()
                                             <span>{criterion.weight}% weight</span>
                                         </div>
                                         <div className="score-bar">
-                                            <span style={{ width: `${criterion.score}%` }} />
+                                            <span style={{ width: `${criterion.score || 0}%` }} />
                                         </div>
                                         <div className="evidence-quote">
                                             <MessageCircle size={14} />
-                                            <span>{criterion.evidence || "No supporting evidence returned."}</span>
+                                            <span>{evidenceText(criterion.evidence) || "No supporting evidence returned."}</span>
                                         </div>
                                     </div>
                                     <div className="criterion-score">
-                                        <strong>{criterion.score}</strong>
+                                        <strong>{criterion.score == null ? "—" : criterion.score}</strong>
                                         <small>/100</small>
                                     </div>
                                 </div>

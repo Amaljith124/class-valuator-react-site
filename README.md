@@ -16,12 +16,23 @@ A responsive React + Vite dashboard for the Humaniti class-recording analysis wo
 Requirements: Node.js 20+ recommended.
 
 ```bash
+git clone https://github.com/Amaljith124/class-valuator-react-site.git
+cd class-valuator-react-site
 npm install
 cp .env.example .env
 npm run dev
 ```
 
 The UI starts in **demo mode** by default so you can inspect the design without a backend. Demo mode uses clearly illustrative sample data. It does not run real analysis.
+
+## Full-system setup order
+
+This UI is one of three parts and needs the others running to show real data:
+
+1. **PostgreSQL** and a private **Cloudflare R2** bucket (see the Node server README).
+2. **FastAPI analysis service** (`fastapi-server`), started and reachable by the Node server.
+3. **Node API**: clone [class-valuator-node-server](https://github.com/Amaljith124/class-valuator-node-server.git), follow its README, and confirm `GET /health` works. Set its `CORS_ORIGIN` to this UI's origin (Vite default `http://localhost:5173`).
+4. **This UI**: run the steps above, then follow "Connect to the Node server" below to turn off demo mode.
 
 ## Connect to the Node server
 
